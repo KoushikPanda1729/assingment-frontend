@@ -69,5 +69,5 @@ jobs:
             docker rm frontend || true
             docker run -d \
               --name frontend \
-              -p 80:80 \
+              -p 3000:80 \
               ${{ secrets.DOCKERHUB_USERNAME }}/vidsense-frontend:latest
