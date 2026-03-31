@@ -50,6 +50,30 @@ const authSlice = createSlice({
     clearError(state) {
       state.error = null
     },
+    setGoogleUser(
+      state,
+      action: {
+        payload: {
+          id: string
+          name: string
+          email: string
+          role: 'admin' | 'editor' | 'viewer'
+          token: string
+          createdAt: string
+        }
+      }
+    ) {
+      state.user = {
+        id: action.payload.id,
+        name: action.payload.name,
+        email: action.payload.email,
+        role: action.payload.role,
+        createdAt: action.payload.createdAt,
+      }
+      state.token = action.payload.token
+      localStorage.setItem('token', action.payload.token)
+      localStorage.setItem('user', JSON.stringify(state.user))
+    },
     setMockUser(state, action: { payload: 'admin' | 'editor' | 'viewer' }) {
       const mockUser = {
         id: 'mock-1',
@@ -104,5 +128,5 @@ const authSlice = createSlice({
   },
 })
 
-export const { logout, clearError, setMockUser } = authSlice.actions
+export const { logout, clearError, setMockUser, setGoogleUser } = authSlice.actions
 export default authSlice.reducer

@@ -9,6 +9,7 @@ import { Library } from '../pages/Library/Library'
 import { VideoPlayer } from '../pages/VideoPlayer/VideoPlayer'
 import { Users } from '../pages/Users/Users'
 import { Profile } from '../pages/Profile/Profile'
+import { AuthCallback } from '../pages/AuthCallback/AuthCallback'
 import { routes } from '../constants/routes'
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -85,6 +86,7 @@ export function AppRouter() {
             </ProtectedRoute>
           }
         />
+        <Route path={routes.authCallback} element={<AuthCallback />} />
         <Route path="*" element={<Navigate to={routes.dashboard} replace />} />
       </Routes>
     </BrowserRouter>
