@@ -2,10 +2,19 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import type { AuthState, LoginPayload, RegisterPayload, User } from '../../types'
 import { authService } from '../../services/authService'
 
-const storedUser = localStorage.getItem('user')
+function getStoredUser(): User | null {
+  try {
+    const raw = localStorage.getItem('user')
+    if (!raw || raw === 'undefined' || raw === 'null') return null
+    return JSON.parse(raw) as User
+  } catch {
+    localStorage.removeItem('user')
+    return null
+  }
+}
 
 const initialState: AuthState = {
-  user: storedUser ? (JSON.parse(storedUser) as User) : null,
+  user: getStoredUser(),
   token: null, // token lives in HTTP-only cookie, not in state
   loading: false,
   error: null,
@@ -42,6 +51,17 @@ export const fetchMe = createAsyncThunk('auth/fetchMe', async (_, { rejectWithVa
     return rejectWithValue(null) // silently fail — user just stays logged out
   }
 })
+
+export const updateProfile = createAsyncThunk(
+  'auth/updateProfile',
+  async (payload: { name: string }, { rejectWithValue }) => {
+    try {
+      return await authService.updateProfile(payload)
+    } catch (err: unknown) {
+      return rejectWithValue((err as Error).message ?? 'Failed to update profile')
+    }
+  }
+)
 
 export const logoutThunk = createAsyncThunk('auth/logout', async () => {
   try {
@@ -140,8 +160,9 @@ const authSlice = createSlice({
       // ── fetchMe (on app load to verify session) ──
       .addCase(fetchMe.fulfilled, (state, action) => {
         if (action.payload && state.user) {
-          // patch role in case it changed
           state.user.role = action.payload.role as User['role']
+          if (action.payload.name) state.user.name = action.payload.name
+          if (action.payload.email) state.user.email = action.payload.email
           localStorage.setItem('user', JSON.stringify(state.user))
         }
       })
@@ -150,6 +171,12 @@ const authSlice = createSlice({
         state.user = null
         state.token = null
         localStorage.removeItem('user')
+      })
+
+      // ── updateProfile ──
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.user = action.payload
+        localStorage.setItem('user', JSON.stringify(action.payload))
       })
 
       // ── logout ──

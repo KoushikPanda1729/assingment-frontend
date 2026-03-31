@@ -13,8 +13,8 @@ import { AuthCallback } from '../pages/AuthCallback/AuthCallback'
 import { routes } from '../constants/routes'
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { token } = useAppSelector((s) => s.auth)
-  return token ? <Navigate to={routes.dashboard} replace /> : <>{children}</>
+  const { user } = useAppSelector((s) => s.auth)
+  return user ? <Navigate to={routes.dashboard} replace /> : <>{children}</>
 }
 
 export function AppRouter() {

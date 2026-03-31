@@ -8,7 +8,7 @@ interface UserResponse {
 
 interface MeResponse {
   success: boolean
-  data: { id: string; role: string }
+  data: { id: string; name: string; email: string; role: string; createdAt: string }
 }
 
 export const authService = {
@@ -25,6 +25,18 @@ export const authService = {
   me: async (): Promise<{ id: string; role: string }> => {
     const { data } = await api.get<MeResponse>('/auth/me')
     return data.data
+  },
+
+  updateProfile: async (payload: { name: string }): Promise<User> => {
+    const { data } = await api.patch<UserResponse>('/auth/me', payload)
+    return data.data.user
+  },
+
+  changePassword: async (payload: {
+    currentPassword: string
+    newPassword: string
+  }): Promise<void> => {
+    await api.post('/auth/change-password', payload)
   },
 
   logout: async (): Promise<void> => {

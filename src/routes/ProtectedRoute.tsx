@@ -9,9 +9,10 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, roles }: ProtectedRouteProps) {
-  const { user, token } = useAppSelector((s) => s.auth)
+  const { user } = useAppSelector((s) => s.auth)
 
-  if (!token || !user) return <Navigate to={routes.login} replace />
+  // user is set from localStorage on load, then verified via /auth/me in App.tsx
+  if (!user) return <Navigate to={routes.login} replace />
   if (roles && !roles.includes(user.role)) return <Navigate to={routes.dashboard} replace />
 
   return <>{children}</>

@@ -1,14 +1,140 @@
 import { useState } from 'react'
-import { Camera, Mail, Shield, Calendar, LogOut, Sun, Moon, User } from 'lucide-react'
+import {
+  Shield,
+  Calendar,
+  LogOut,
+  Sun,
+  Moon,
+  User,
+  Check,
+  KeyRound,
+  Eye,
+  EyeOff,
+} from 'lucide-react'
 import { MainLayout } from '../../components/layout/MainLayout'
-import { Card, Button, Input, Badge, Avatar } from '../../components/ui'
+import { Card, Button, Input, Badge, Avatar, Modal } from '../../components/ui'
 import { useAppDispatch } from '../../hooks/useAppDispatch'
 import { useAppSelector } from '../../hooks/useAppSelector'
-import { logout } from '../../store/slices/authSlice'
+import { logout, updateProfile } from '../../store/slices/authSlice'
 import { toggleTheme } from '../../store/slices/themeSlice'
+import { authService } from '../../services/authService'
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { dateStyle: 'long' })
+}
+
+function PasswordModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [current, setCurrent] = useState('')
+  const [next, setNext] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [showCurrent, setShowCurrent] = useState(false)
+  const [showNext, setShowNext] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
+
+  async function handleSubmit() {
+    setError('')
+    if (!current || !next || !confirm) {
+      setError('All fields are required')
+      return
+    }
+    if (next.length < 6) {
+      setError('New password must be at least 6 characters')
+      return
+    }
+    if (next !== confirm) {
+      setError('Passwords do not match')
+      return
+    }
+    setSaving(true)
+    try {
+      await authService.changePassword({ currentPassword: current, newPassword: next })
+      setSuccess(true)
+      setTimeout(() => {
+        onClose()
+        setSuccess(false)
+        setCurrent('')
+        setNext('')
+        setConfirm('')
+      }, 1500)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to change password')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function handleClose() {
+    onClose()
+    setCurrent('')
+    setNext('')
+    setConfirm('')
+    setError('')
+    setSuccess(false)
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={handleClose}
+      title="Change Password"
+      footer={
+        <>
+          <Button variant="ghost" onClick={handleClose}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            loading={saving}
+            icon={success ? <Check size={14} /> : undefined}
+          >
+            {success ? 'Changed!' : 'Update Password'}
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <div className="relative">
+          <Input
+            label="Current Password"
+            type={showCurrent ? 'text' : 'password'}
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+          />
+          <button
+            type="button"
+            onClick={() => setShowCurrent((v) => !v)}
+            className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          >
+            {showCurrent ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
+        </div>
+        <div className="relative">
+          <Input
+            label="New Password"
+            type={showNext ? 'text' : 'password'}
+            value={next}
+            onChange={(e) => setNext(e.target.value)}
+          />
+          <button
+            type="button"
+            onClick={() => setShowNext((v) => !v)}
+            className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          >
+            {showNext ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
+        </div>
+        <Input
+          label="Confirm New Password"
+          type="password"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+        />
+        {error && <p className="text-xs text-red-500">{error}</p>}
+      </div>
+    </Modal>
+  )
 }
 
 export function Profile() {
@@ -17,28 +143,54 @@ export function Profile() {
   const mode = useAppSelector((s) => s.theme.mode)
 
   const [name, setName] = useState(user?.name ?? '')
-  const [email, setEmail] = useState(user?.email ?? '')
+  const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [showPwModal, setShowPwModal] = useState(false)
 
-  function handleSave() {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  async function handleSave() {
+    if (!name.trim()) return
+    setSaving(true)
+    setSaveError('')
+    try {
+      await dispatch(updateProfile({ name: name.trim() })).unwrap()
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    } catch (err) {
+      setSaveError(typeof err === 'string' ? err : 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
   }
+
+  const themeToggle = (
+    <button
+      onClick={() => dispatch(toggleTheme())}
+      className={[
+        'relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0',
+        mode === 'dark' ? 'bg-indigo-500' : 'bg-gray-200',
+      ].join(' ')}
+    >
+      <span
+        className={[
+          'absolute top-[3px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-all duration-200',
+          mode === 'dark' ? 'left-[23px]' : 'left-[3px]',
+        ].join(' ')}
+      />
+    </button>
+  )
 
   return (
     <MainLayout title="Profile" subtitle="Manage your account">
+      <PasswordModal open={showPwModal} onClose={() => setShowPwModal(false)} />
+
       {/* ── Desktop two-column layout ── */}
       <div className="hidden lg:grid lg:grid-cols-[280px_1fr] gap-6 items-start">
         {/* Left column */}
         <div className="flex flex-col gap-4">
           {/* Avatar card */}
           <Card className="p-6 flex flex-col items-center text-center gap-4">
-            <div className="relative">
-              <Avatar name={user?.name ?? 'User'} size="lg" />
-              <button className="absolute -bottom-1 -right-1 w-7 h-7 bg-indigo-500 rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-[#1a1a24]">
-                <Camera size={12} className="text-white" />
-              </button>
-            </div>
+            <Avatar name={user?.name ?? 'User'} size="lg" />
             <div>
               <h2 className="text-base font-bold text-gray-800 dark:text-[#f1f1f5]">
                 {user?.name}
@@ -106,24 +258,10 @@ export function Profile() {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => dispatch(toggleTheme())}
-                className={[
-                  'relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0',
-                  mode === 'dark' ? 'bg-indigo-500' : 'bg-gray-200',
-                ].join(' ')}
-              >
-                <span
-                  className={[
-                    'absolute top-[3px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-all duration-200',
-                    mode === 'dark' ? 'left-[23px]' : 'left-[3px]',
-                  ].join(' ')}
-                />
-              </button>
+              {themeToggle}
             </div>
           </Card>
 
-          {/* Sign out */}
           <Button
             variant="danger"
             fullWidth
@@ -136,7 +274,7 @@ export function Profile() {
 
         {/* Right column */}
         <div className="flex flex-col gap-4">
-          {/* Personal info */}
+          {/* Personal info — name only */}
           <Card className="p-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-9 h-9 bg-indigo-100 dark:bg-indigo-500/10 rounded-xl flex items-center justify-center">
@@ -147,84 +285,58 @@ export function Profile() {
                   Personal Information
                 </h3>
                 <p className="text-xs text-gray-400 dark:text-[#60607a]">
-                  Update your name and email
+                  Update your display name
                 </p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="max-w-sm">
               <Input label="Full Name" value={name} onChange={(e) => setName(e.target.value)} />
-              <Input
-                label="Email Address"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                leftIcon={<Mail size={15} />}
-              />
             </div>
+            {saveError && <p className="mt-3 text-xs text-red-500">{saveError}</p>}
             <div className="mt-5 flex gap-3 justify-end">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => {
                   setName(user?.name ?? '')
-                  setEmail(user?.email ?? '')
+                  setSaveError('')
                 }}
               >
                 Cancel
               </Button>
-              <Button onClick={handleSave} size="sm">
-                {saved ? '✓ Saved' : 'Save Changes'}
+              <Button
+                onClick={handleSave}
+                size="sm"
+                loading={saving}
+                icon={saved ? <Check size={14} /> : undefined}
+              >
+                {saved ? 'Saved' : 'Save Changes'}
               </Button>
             </div>
           </Card>
 
-          {/* Stats / activity placeholder */}
-          <div className="grid grid-cols-3 gap-4">
-            {[
-              { label: 'Videos Uploaded', value: '12' },
-              { label: 'Safe Videos', value: '9' },
-              { label: 'Flagged Videos', value: '3' },
-            ].map((s) => (
-              <Card key={s.label} className="p-5 text-center">
-                <p className="text-2xl font-bold text-gray-800 dark:text-[#f1f1f5]">{s.value}</p>
-                <p className="text-xs text-gray-400 dark:text-[#60607a] mt-1">{s.label}</p>
-              </Card>
-            ))}
-          </div>
-
-          {/* Security placeholder */}
+          {/* Security */}
           <Card className="p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-9 h-9 bg-violet-100 dark:bg-violet-500/10 rounded-xl flex items-center justify-center">
-                <Shield size={16} className="text-violet-500 dark:text-violet-400" />
+                <KeyRound size={16} className="text-violet-500 dark:text-violet-400" />
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-gray-800 dark:text-[#f1f1f5]">
                   Security
                 </h3>
-                <p className="text-xs text-gray-400 dark:text-[#60607a]">
-                  Manage your password and security
-                </p>
+                <p className="text-xs text-gray-400 dark:text-[#60607a]">Manage your password</p>
               </div>
-            </div>
-            <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-[#2a2a3a]">
-              <div>
-                <p className="text-sm font-medium text-gray-700 dark:text-[#f1f1f5]">Password</p>
-                <p className="text-xs text-gray-400 dark:text-[#60607a]">Last changed never</p>
-              </div>
-              <Button variant="ghost" size="sm">
-                Change
-              </Button>
             </div>
             <div className="flex items-center justify-between py-3">
               <div>
-                <p className="text-sm font-medium text-gray-700 dark:text-[#f1f1f5]">
-                  Two-factor authentication
+                <p className="text-sm font-medium text-gray-700 dark:text-[#f1f1f5]">Password</p>
+                <p className="text-xs text-gray-400 dark:text-[#60607a]">
+                  Change your account password
                 </p>
-                <p className="text-xs text-gray-400 dark:text-[#60607a]">Not enabled</p>
               </div>
-              <Button variant="ghost" size="sm">
-                Enable
+              <Button variant="outline" size="sm" onClick={() => setShowPwModal(true)}>
+                Change
               </Button>
             </div>
           </Card>
@@ -233,15 +345,9 @@ export function Profile() {
 
       {/* ── Mobile single-column layout ── */}
       <div className="lg:hidden max-w-2xl mx-auto space-y-5">
-        {/* Avatar card */}
         <Card className="p-6">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
-            <div className="relative">
-              <Avatar name={user?.name ?? 'User'} size="lg" />
-              <button className="absolute -bottom-1 -right-1 w-7 h-7 bg-indigo-500 rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-[#1a1a24]">
-                <Camera size={12} className="text-white" />
-              </button>
-            </div>
+            <Avatar name={user?.name ?? 'User'} size="lg" />
             <div className="text-center sm:text-left">
               <h2 className="text-lg font-bold text-gray-800 dark:text-[#f1f1f5]">{user?.name}</h2>
               <p className="text-sm text-gray-400 dark:text-[#60607a] mb-2">{user?.email}</p>
@@ -254,26 +360,23 @@ export function Profile() {
           <h3 className="text-sm font-semibold text-gray-800 dark:text-[#f1f1f5] mb-4">
             Personal Information
           </h3>
-          <div className="space-y-4">
-            <Input label="Full Name" value={name} onChange={(e) => setName(e.target.value)} />
-            <Input
-              label="Email Address"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              leftIcon={<Mail size={15} />}
-            />
-          </div>
+          <Input label="Full Name" value={name} onChange={(e) => setName(e.target.value)} />
+          {saveError && <p className="mt-3 text-xs text-red-500">{saveError}</p>}
           <div className="mt-5 flex gap-3">
-            <Button onClick={handleSave} size="sm">
-              {saved ? '✓ Saved' : 'Save Changes'}
+            <Button
+              onClick={handleSave}
+              size="sm"
+              loading={saving}
+              icon={saved ? <Check size={14} /> : undefined}
+            >
+              {saved ? 'Saved' : 'Save Changes'}
             </Button>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => {
                 setName(user?.name ?? '')
-                setEmail(user?.email ?? '')
+                setSaveError('')
               }}
             >
               Cancel
@@ -315,6 +418,20 @@ export function Profile() {
         </Card>
 
         <Card className="p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-gray-800 dark:text-[#f1f1f5]">Password</p>
+              <p className="text-xs text-gray-400 dark:text-[#60607a]">
+                Change your account password
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setShowPwModal(true)}>
+              Change
+            </Button>
+          </div>
+        </Card>
+
+        <Card className="p-5">
           <h3 className="text-sm font-semibold text-gray-800 dark:text-[#f1f1f5] mb-4">
             Preferences
           </h3>
@@ -332,20 +449,7 @@ export function Profile() {
                 <p className="text-xs text-gray-400 dark:text-[#60607a] capitalize">{mode} mode</p>
               </div>
             </div>
-            <button
-              onClick={() => dispatch(toggleTheme())}
-              className={[
-                'relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0',
-                mode === 'dark' ? 'bg-indigo-500' : 'bg-gray-200',
-              ].join(' ')}
-            >
-              <span
-                className={[
-                  'absolute top-[3px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-all duration-200',
-                  mode === 'dark' ? 'left-[23px]' : 'left-[3px]',
-                ].join(' ')}
-              />
-            </button>
+            {themeToggle}
           </div>
         </Card>
 

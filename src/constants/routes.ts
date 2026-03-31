@@ -7,5 +7,6 @@ export const routes = {
   videoPlayer: '/video/:id',
   users: '/users',
   profile: '/profile',
+  authCallback: '/auth/callback',
   videoPlayerPath: (id: string) => `/video/${id}`,
 }

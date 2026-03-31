@@ -1,14 +1,25 @@
+import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Upload, Library, Users, LogOut } from 'lucide-react'
-import { Logo } from '../ui'
+import { Home, LayoutDashboard, Upload, Library, Compass, Users, LogOut } from 'lucide-react'
+import { Logo, Modal, Button, Avatar } from '../ui'
 import { useAppDispatch } from '../../hooks/useAppDispatch'
 import { useAppSelector as useSelector } from '../../hooks/useAppSelector'
 import { logout } from '../../store/slices/authSlice'
-import { Avatar } from '../ui'
 import { routes } from '../../constants/routes'
 import { text } from '../../constants/text'
 
-const navItems = [
+const viewerNavItems = [
+  { to: routes.dashboard, icon: Home, label: 'Home' },
+  { to: routes.library, icon: Compass, label: 'Browse' },
+]
+
+const editorNavItems = [
+  { to: routes.dashboard, icon: LayoutDashboard, label: text.nav.dashboard },
+  { to: routes.upload, icon: Upload, label: text.nav.upload },
+  { to: routes.library, icon: Library, label: text.nav.library },
+]
+
+const adminNavItems = [
   { to: routes.dashboard, icon: LayoutDashboard, label: text.nav.dashboard },
   { to: routes.upload, icon: Upload, label: text.nav.upload },
   { to: routes.library, icon: Library, label: text.nav.library },
@@ -18,6 +29,14 @@ export function Sidebar() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const user = useSelector((s) => s.auth.user)
+
+  const navItems =
+    user?.role === 'viewer'
+      ? viewerNavItems
+      : user?.role === 'admin'
+        ? adminNavItems
+        : editorNavItems
+  const [showLogout, setShowLogout] = useState(false)
 
   return (
     <aside className="fixed top-0 left-0 h-screen w-[240px] bg-white dark:bg-[#111118] border-r border-gray-200 dark:border-[#2a2a3a] flex flex-col z-30">
@@ -83,13 +102,39 @@ export function Sidebar() {
           </div>
         </button>
         <button
-          onClick={() => dispatch(logout())}
+          onClick={() => setShowLogout(true)}
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-gray-500 dark:text-[#a0a0b0] hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/5 transition-all duration-150 mt-1"
         >
           <LogOut size={17} />
           {text.nav.logout}
         </button>
       </div>
+
+      <Modal
+        open={showLogout}
+        onClose={() => setShowLogout(false)}
+        title="Logout"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setShowLogout(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                dispatch(logout())
+                setShowLogout(false)
+              }}
+            >
+              Logout
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-gray-600 dark:text-[#a0a0b0]">
+          Are you sure you want to logout?
+        </p>
+      </Modal>
     </aside>
   )
 }

@@ -1,4 +1,4 @@
-import { Bell, Sun, Moon, Menu } from 'lucide-react'
+import { Sun, Moon, Menu } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Logo } from '../ui'
 import { useAppSelector } from '../../hooks/useAppSelector'
@@ -44,10 +44,6 @@ export function Header({ title, subtitle, onMenuClick }: HeaderProps) {
 
           {/* Right actions */}
           <div className="flex items-center gap-0.5">
-            <button className="relative w-9 h-9 flex items-center justify-center rounded-full text-gray-400 dark:text-[#60607a] hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
-              <Bell size={17} />
-              <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-indigo-500 rounded-full" />
-            </button>
             <div className="ml-1">
               <Avatar name={user?.name ?? 'User'} size="sm" />
             </div>
@@ -77,9 +73,6 @@ export function Header({ title, subtitle, onMenuClick }: HeaderProps) {
             className="p-2 rounded-lg text-gray-400 dark:text-[#60607a] hover:text-gray-700 dark:hover:text-[#f1f1f5] hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
           >
             {mode === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-          </button>
-          <button className="p-2 rounded-lg text-gray-400 dark:text-[#60607a] hover:text-gray-700 dark:hover:text-[#f1f1f5] hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
-            <Bell size={17} />
           </button>
           <button
             onClick={() => navigate(routes.profile)}

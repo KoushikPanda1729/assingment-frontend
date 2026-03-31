@@ -15,32 +15,17 @@ import {
 import { addVideo } from '../../store/slices/videosSlice'
 import { videoService } from '../../services/videoService'
 import { text } from '../../constants/text'
-import type { Video } from '../../types'
-
-function simulateProgress(onProgress: (pct: number) => void, durationMs: number): Promise<void> {
-  return new Promise((resolve) => {
-    let pct = 0
-    const interval = setInterval(() => {
-      pct = Math.min(100, pct + Math.random() * 15)
-      onProgress(Math.round(pct))
-      if (pct >= 100) {
-        clearInterval(interval)
-        resolve()
-      }
-    }, durationMs / 10)
-  })
-}
 
 export function Upload() {
   const dispatch = useAppDispatch()
-  const { status, uploadProgress, processingProgress, error } = useAppSelector((s) => s.upload)
+  const { status, uploadProgress, error } = useAppSelector((s) => s.upload)
 
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [titleError, setTitleError] = useState('')
 
-  const isActive = status !== 'idle' && status !== 'done' && status !== 'error'
+  const isActive = status === 'uploading' || status === 'processing'
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -58,30 +43,20 @@ export function Upload() {
 
     try {
       dispatch(setStatus('uploading'))
-      let video: Video
-      try {
-        video = await videoService.upload(formData, (pct) => dispatch(setUploadProgress(pct)))
-      } catch {
-        await simulateProgress((pct) => dispatch(setUploadProgress(pct)), 2000)
-        video = {
-          id: crypto.randomUUID(),
-          title: title.trim(),
-          description: description.trim() || undefined,
-          filename: file.name,
-          size: file.size,
-          status: 'processing',
-          uploadedBy: 'mock-1',
-          processingProgress: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
-      }
+
+      const video = await videoService.upload(formData, (pct) => {
+        dispatch(setUploadProgress(pct))
+      })
+
       dispatch(setCurrentVideoId(video.id))
       dispatch(addVideo(video))
+      dispatch(setStatus('processing'))
+
+      // Status will update via Socket.io events in App.tsx
+      // Once processing done, show success
       dispatch(setStatus('done'))
     } catch (err: unknown) {
-      const e = err as { message?: string }
-      dispatch(setError(e.message ?? text.errors.generic))
+      dispatch(setError((err as Error).message ?? text.errors.generic))
     }
   }
 
@@ -104,7 +79,7 @@ export function Upload() {
               {text.upload.progress.done}
             </h3>
             <p className="text-sm text-gray-500 dark:text-[#a0a0b0] mb-6">
-              Your video is being analyzed for content sensitivity.
+              Your video is being analyzed for content sensitivity. Check the Library for updates.
             </p>
             <Button onClick={handleReset}>Upload another video</Button>
           </Card>
@@ -153,21 +128,13 @@ export function Upload() {
                 />
               </Card>
             )}
-            {status === 'processing' && (
-              <Card className="p-5">
-                <ProgressBar
-                  label={text.upload.progress.processing}
-                  value={processingProgress}
-                  showPercent
-                  variant="warning"
-                />
-              </Card>
-            )}
+
             {error && (
               <div className="px-4 py-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg text-sm text-red-600 dark:text-red-400">
                 {error}
               </div>
             )}
+
             <Button
               type="submit"
               loading={isActive}

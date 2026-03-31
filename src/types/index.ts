@@ -14,21 +14,23 @@ export interface Video {
   id: string
   title: string
   description?: string
-  filename: string
+  originalName: string
+  mimetype: string
   size: number
   duration?: number
+  resolution?: string
+  thumbnail?: boolean
   status: VideoStatus
-  uploadedBy: string
-  processingProgress?: number
-  thumbnailUrl?: string
-  streamUrl?: string
+  sensitivityScore?: number
+  processingProgress: number
+  owner: string | { id: string; name: string; email: string }
   createdAt: string
   updatedAt: string
 }
 
 export interface AuthState {
   user: User | null
-  token: string | null
+  token: string | null // only used for mock/demo login, real auth uses HTTP-only cookie
   loading: boolean
   error: string | null
 }
@@ -39,6 +41,7 @@ export interface VideosState {
   loading: boolean
   error: string | null
   filter: 'all' | VideoStatus
+  stats: DashboardStats | null
 }
 
 export interface UploadState {

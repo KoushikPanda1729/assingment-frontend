@@ -1,17 +1,27 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Search,
   Trash2,
   UserCog,
-  Plus,
   Users as UsersIcon,
   ShieldCheck,
   PenLine,
   Eye,
 } from 'lucide-react'
 import { MainLayout } from '../../components/layout/MainLayout'
-import { Card, CardHeader, Badge, Avatar, Input, Button, Modal, Select } from '../../components/ui'
-import { mockUsers } from '../../mocks/users'
+import {
+  Card,
+  CardHeader,
+  Badge,
+  Avatar,
+  Input,
+  Button,
+  Modal,
+  Select,
+  PageSpinner,
+} from '../../components/ui'
+import { userService } from '../../services/userService'
+import { useAppSelector } from '../../hooks/useAppSelector'
 import type { User, UserRole } from '../../types'
 
 function formatDate(iso: string) {
@@ -29,11 +39,21 @@ const roleOptions = [
 ]
 
 export function Users() {
-  const [users, setUsers] = useState<User[]>(mockUsers)
+  const currentUser = useAppSelector((s) => s.auth.user)
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [editUser, setEditUser] = useState<User | null>(null)
   const [editRole, setEditRole] = useState<UserRole>('viewer')
   const [deleteUser, setDeleteUser] = useState<User | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    userService
+      .getAll()
+      .then(setUsers)
+      .finally(() => setLoading(false))
+  }, [])
 
   const filtered = users.filter(
     (u) =>
@@ -46,16 +66,28 @@ export function Users() {
     setEditRole(user.role)
   }
 
-  function handleEditSave() {
+  async function handleEditSave() {
     if (!editUser) return
-    setUsers((prev) => prev.map((u) => (u.id === editUser.id ? { ...u, role: editRole } : u)))
-    setEditUser(null)
+    setSaving(true)
+    try {
+      const updated = await userService.updateRole(editUser.id, editRole)
+      setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)))
+      setEditUser(null)
+    } finally {
+      setSaving(false)
+    }
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!deleteUser) return
-    setUsers((prev) => prev.filter((u) => u.id !== deleteUser.id))
-    setDeleteUser(null)
+    setSaving(true)
+    try {
+      await userService.delete(deleteUser.id)
+      setUsers((prev) => prev.filter((u) => u.id !== deleteUser.id))
+      setDeleteUser(null)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const stats = {
@@ -64,6 +96,13 @@ export function Users() {
     editors: users.filter((u) => u.role === 'editor').length,
     viewers: users.filter((u) => u.role === 'viewer').length,
   }
+
+  if (loading)
+    return (
+      <MainLayout title="Users" subtitle="Manage user accounts and roles">
+        <PageSpinner />
+      </MainLayout>
+    )
 
   return (
     <MainLayout title="Users" subtitle="Manage user accounts and roles">
@@ -113,15 +152,7 @@ export function Users() {
 
       {/* Table card */}
       <Card>
-        <CardHeader
-          title="All Users"
-          subtitle={`${filtered.length} users`}
-          action={
-            <Button size="sm" icon={<Plus size={14} />}>
-              Add User
-            </Button>
-          }
-        />
+        <CardHeader title="All Users" subtitle={`${filtered.length} users`} />
 
         {/* Search */}
         <div className="px-5 py-3 border-b border-gray-100 dark:border-[#2a2a3a]">
@@ -177,14 +208,16 @@ export function Users() {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => handleEditOpen(user)}
-                        className="p-1.5 rounded-lg text-gray-400 dark:text-[#60607a] hover:text-indigo-500 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors"
+                        disabled={user.id === currentUser?.id}
+                        className="p-1.5 rounded-lg text-gray-400 dark:text-[#60607a] hover:text-indigo-500 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                         title="Edit role"
                       >
                         <UserCog size={15} />
                       </button>
                       <button
                         onClick={() => setDeleteUser(user)}
-                        className="p-1.5 rounded-lg text-gray-400 dark:text-[#60607a] hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                        disabled={user.id === currentUser?.id}
+                        className="p-1.5 rounded-lg text-gray-400 dark:text-[#60607a] hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                         title="Delete user"
                       >
                         <Trash2 size={15} />
@@ -214,13 +247,15 @@ export function Users() {
               <div className="flex flex-col gap-1">
                 <button
                   onClick={() => handleEditOpen(user)}
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors"
+                  disabled={user.id === currentUser?.id}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <UserCog size={16} />
                 </button>
                 <button
                   onClick={() => setDeleteUser(user)}
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                  disabled={user.id === currentUser?.id}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <Trash2 size={16} />
                 </button>
@@ -246,7 +281,9 @@ export function Users() {
             <Button variant="ghost" onClick={() => setEditUser(null)}>
               Cancel
             </Button>
-            <Button onClick={handleEditSave}>Save Changes</Button>
+            <Button onClick={handleEditSave} loading={saving}>
+              Save Changes
+            </Button>
           </>
         }
       >
@@ -281,7 +318,7 @@ export function Users() {
             <Button variant="ghost" onClick={() => setDeleteUser(null)}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={handleDelete}>
+            <Button variant="danger" onClick={handleDelete} loading={saving}>
               Delete
             </Button>
           </>

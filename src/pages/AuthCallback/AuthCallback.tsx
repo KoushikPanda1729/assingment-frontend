@@ -12,29 +12,19 @@ export function AuthCallback() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    const token = params.get('token')
     const id = params.get('id')
     const name = params.get('name')
     const email = params.get('email')
     const role = params.get('role') as UserRole | null
     const error = params.get('error')
 
-    if (error || !token || !id || !name || !email || !role) {
+    if (error || !id || !name || !email || !role) {
       navigate(routes.login + '?error=google_failed', { replace: true })
       return
     }
 
-    dispatch(
-      setGoogleUser({
-        id,
-        name,
-        email,
-        role,
-        token,
-        createdAt: new Date().toISOString(),
-      })
-    )
-
+    // Cookie is already set by backend — just store user info in Redux
+    dispatch(setGoogleUser({ id, name, email, role, createdAt: new Date().toISOString() }))
     navigate(routes.dashboard, { replace: true })
   }, [dispatch, navigate])
 

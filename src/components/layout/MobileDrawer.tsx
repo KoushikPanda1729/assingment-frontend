@@ -1,6 +1,17 @@
 import { useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Upload, Library, Users, LogOut, X, Sun, Moon } from 'lucide-react'
+import {
+  Home,
+  LayoutDashboard,
+  Upload,
+  Library,
+  Compass,
+  Users,
+  LogOut,
+  X,
+  Sun,
+  Moon,
+} from 'lucide-react'
 import { Logo } from '../ui'
 import { useAppDispatch } from '../../hooks/useAppDispatch'
 import { useAppSelector } from '../../hooks/useAppSelector'
@@ -15,7 +26,12 @@ interface MobileDrawerProps {
   onClose: () => void
 }
 
-const navItems = [
+const viewerNavItems = [
+  { to: routes.dashboard, icon: Home, label: 'Home' },
+  { to: routes.library, icon: Compass, label: 'Browse' },
+]
+
+const staffNavItems = [
   { to: routes.dashboard, icon: LayoutDashboard, label: text.nav.dashboard },
   { to: routes.upload, icon: Upload, label: text.nav.upload },
   { to: routes.library, icon: Library, label: text.nav.library },
@@ -25,6 +41,7 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
   const dispatch = useAppDispatch()
   const user = useAppSelector((s) => s.auth.user)
   const mode = useAppSelector((s) => s.theme.mode)
+  const navItems = user?.role === 'viewer' ? viewerNavItems : staffNavItems
 
   // Lock body scroll when open
   useEffect(() => {

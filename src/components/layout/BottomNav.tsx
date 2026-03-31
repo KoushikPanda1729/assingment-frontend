@@ -1,11 +1,16 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Upload, Library } from 'lucide-react'
+import { Home, LayoutDashboard, Upload, Library, Compass } from 'lucide-react'
 import { useAppSelector } from '../../hooks/useAppSelector'
 import { Avatar } from '../ui'
 import { routes } from '../../constants/routes'
 import { text } from '../../constants/text'
 
-const navItems = [
+const viewerNavItems = [
+  { to: routes.dashboard, icon: Home, label: 'Home' },
+  { to: routes.library, icon: Compass, label: 'Browse' },
+]
+
+const editorNavItems = [
   { to: routes.dashboard, icon: LayoutDashboard, label: 'Home' },
   { to: routes.upload, icon: Upload, label: text.nav.upload },
   { to: routes.library, icon: Library, label: text.nav.library },
@@ -13,6 +18,7 @@ const navItems = [
 
 export function BottomNav() {
   const user = useAppSelector((s) => s.auth.user)
+  const navItems = user?.role === 'viewer' ? viewerNavItems : editorNavItems
 
   return (
     <nav
