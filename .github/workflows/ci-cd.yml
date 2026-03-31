@@ -55,6 +55,10 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/vidsense-frontend:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/vidsense-frontend:${{ github.sha }}
+          build-args: |
+            VITE_API_URL=${{ secrets.VITE_API_URL }}
+            VITE_SOCKET_URL=${{ secrets.VITE_SOCKET_URL }}
+            VITE_APP_NAME=VidSense
 
       - name: Deploy to EC2
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
