@@ -1,16 +1,17 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import type { AuthState, LoginPayload, RegisterPayload } from '../../types'
+import type { AuthState, LoginPayload, RegisterPayload, User } from '../../types'
 import { authService } from '../../services/authService'
 
-const storedToken = localStorage.getItem('token')
 const storedUser = localStorage.getItem('user')
 
 const initialState: AuthState = {
-  user: storedUser ? JSON.parse(storedUser) : null,
-  token: storedToken,
+  user: storedUser ? (JSON.parse(storedUser) as User) : null,
+  token: null, // token lives in HTTP-only cookie, not in state
   loading: false,
   error: null,
 }
+
+// ── Thunks ─────────────────────────────────────────────────────────────────
 
 export const login = createAsyncThunk(
   'auth/login',
@@ -18,8 +19,7 @@ export const login = createAsyncThunk(
     try {
       return await authService.login(payload)
     } catch (err: unknown) {
-      const error = err as { message?: string }
-      return rejectWithValue(error.message ?? 'Login failed')
+      return rejectWithValue((err as Error).message ?? 'Login failed')
     }
   }
 )
@@ -30,52 +30,39 @@ export const register = createAsyncThunk(
     try {
       return await authService.register(payload)
     } catch (err: unknown) {
-      const error = err as { message?: string }
-      return rejectWithValue(error.message ?? 'Registration failed')
+      return rejectWithValue((err as Error).message ?? 'Registration failed')
     }
   }
 )
+
+export const fetchMe = createAsyncThunk('auth/fetchMe', async (_, { rejectWithValue }) => {
+  try {
+    return await authService.me()
+  } catch {
+    return rejectWithValue(null) // silently fail — user just stays logged out
+  }
+})
+
+export const logoutThunk = createAsyncThunk('auth/logout', async () => {
+  try {
+    await authService.logout()
+  } catch {
+    // ignore — clear local state regardless
+  }
+})
+
+// ── Slice ───────────────────────────────────────────────────────────────────
 
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    logout(state) {
-      state.user = null
-      state.token = null
-      state.error = null
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-    },
     clearError(state) {
       state.error = null
     },
-    setGoogleUser(
-      state,
-      action: {
-        payload: {
-          id: string
-          name: string
-          email: string
-          role: 'admin' | 'editor' | 'viewer'
-          token: string
-          createdAt: string
-        }
-      }
-    ) {
-      state.user = {
-        id: action.payload.id,
-        name: action.payload.name,
-        email: action.payload.email,
-        role: action.payload.role,
-        createdAt: action.payload.createdAt,
-      }
-      state.token = action.payload.token
-      localStorage.setItem('token', action.payload.token)
-      localStorage.setItem('user', JSON.stringify(state.user))
-    },
+    // Demo login — bypasses backend
     setMockUser(state, action: { payload: 'admin' | 'editor' | 'viewer' }) {
-      const mockUser = {
+      const mockUser: User = {
         id: 'mock-1',
         name:
           action.payload === 'admin'
@@ -86,47 +73,98 @@ const authSlice = createSlice({
         email: `${action.payload}@demo.com`,
         role: action.payload,
         createdAt: new Date().toISOString(),
-      } as const
+      }
       state.user = mockUser
       state.token = 'mock-token'
-      localStorage.setItem('token', 'mock-token')
       localStorage.setItem('user', JSON.stringify(mockUser))
+    },
+    // Google OAuth — user info comes from redirect params (cookie already set by backend)
+    setGoogleUser(
+      state,
+      action: {
+        payload: {
+          id: string
+          name: string
+          email: string
+          role: 'admin' | 'editor' | 'viewer'
+          createdAt: string
+        }
+      }
+    ) {
+      const user: User = {
+        id: action.payload.id,
+        name: action.payload.name,
+        email: action.payload.email,
+        role: action.payload.role,
+        createdAt: action.payload.createdAt,
+      }
+      state.user = user
+      state.token = null // cookie handles auth
+      localStorage.setItem('user', JSON.stringify(user))
     },
   },
   extraReducers: (builder) => {
     builder
+      // ── login ──
       .addCase(login.pending, (state) => {
         state.loading = true
         state.error = null
       })
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false
-        state.user = action.payload.user
-        state.token = action.payload.token
-        localStorage.setItem('token', action.payload.token)
-        localStorage.setItem('user', JSON.stringify(action.payload.user))
+        state.user = action.payload
+        state.token = null // cookie handles auth
+        localStorage.setItem('user', JSON.stringify(action.payload))
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload as string
       })
+
+      // ── register ──
       .addCase(register.pending, (state) => {
         state.loading = true
         state.error = null
       })
       .addCase(register.fulfilled, (state, action) => {
         state.loading = false
-        state.user = action.payload.user
-        state.token = action.payload.token
-        localStorage.setItem('token', action.payload.token)
-        localStorage.setItem('user', JSON.stringify(action.payload.user))
+        state.user = action.payload
+        state.token = null
+        localStorage.setItem('user', JSON.stringify(action.payload))
       })
       .addCase(register.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload as string
       })
+
+      // ── fetchMe (on app load to verify session) ──
+      .addCase(fetchMe.fulfilled, (state, action) => {
+        if (action.payload && state.user) {
+          // patch role in case it changed
+          state.user.role = action.payload.role as User['role']
+          localStorage.setItem('user', JSON.stringify(state.user))
+        }
+      })
+      .addCase(fetchMe.rejected, (state) => {
+        // cookie expired/invalid — clear everything
+        state.user = null
+        state.token = null
+        localStorage.removeItem('user')
+      })
+
+      // ── logout ──
+      .addCase(logoutThunk.fulfilled, (state) => {
+        state.user = null
+        state.token = null
+        state.error = null
+        localStorage.removeItem('user')
+      })
   },
 })
 
-export const { logout, clearError, setMockUser, setGoogleUser } = authSlice.actions
+export const { clearError, setMockUser, setGoogleUser } = authSlice.actions
+
+// Keep logout as a named export that dispatches the thunk
+export const logout = logoutThunk
+
 export default authSlice.reducer
