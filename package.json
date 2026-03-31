@@ -14,8 +14,15 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@reduxjs/toolkit": "^2.11.2",
+    "axios": "^1.14.0",
+    "lucide-react": "^1.7.0",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "react-dropzone": "^15.0.0",
+    "react-redux": "^9.2.0",
+    "react-router-dom": "^7.13.2",
+    "socket.io-client": "^4.8.3"
   },
   "lint-staged": {
     "**/*.{ts,tsx,js,jsx}": [
