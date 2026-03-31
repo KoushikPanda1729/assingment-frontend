@@ -22,7 +22,7 @@ export const authService = {
     return data.data.user
   },
 
-  me: async (): Promise<{ id: string; role: string }> => {
+  me: async (): Promise<{ id: string; role: string; name?: string; email?: string }> => {
     const { data } = await api.get<MeResponse>('/auth/me')
     return data.data
   },

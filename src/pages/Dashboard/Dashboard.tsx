@@ -249,7 +249,7 @@ export function Dashboard() {
 
   useEffect(() => {
     if (!isViewer) {
-      dispatch(fetchVideos())
+      dispatch(fetchVideos({}))
       dispatch(fetchStats())
     }
   }, [dispatch, isViewer])

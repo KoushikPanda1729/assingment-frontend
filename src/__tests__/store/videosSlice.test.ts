@@ -42,6 +42,7 @@ const mockVideo: Video = {
   status: 'safe',
   processingProgress: 100,
   thumbnail: false,
+  owner: 'mock-user-1',
   createdAt: '2024-01-01',
   updatedAt: '2024-01-01',
 }
