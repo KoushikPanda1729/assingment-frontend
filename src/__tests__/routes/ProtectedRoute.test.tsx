@@ -5,7 +5,7 @@ import { Provider } from 'react-redux'
 import { configureStore } from '@reduxjs/toolkit'
 import { ProtectedRoute } from '../../routes/ProtectedRoute'
 import authReducer from '../../store/slices/authSlice'
-import type { User } from '../../types'
+import type { User, AuthState } from '../../types'
 
 const mockUser: User = {
   id: 'u1',
@@ -25,7 +25,7 @@ const adminUser: User = {
 function renderWithUser(user: User | null, requiredRole?: string[]) {
   const store = configureStore({
     reducer: { auth: authReducer },
-    preloadedState: { auth: { user, loading: false, error: null } },
+    preloadedState: { auth: { user, token: null, loading: false, error: null } as AuthState },
   })
   return render(
     <Provider store={store}>
